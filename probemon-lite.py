@@ -18,7 +18,7 @@ DESCRIPTION = "a command line tool for logging 802.11 probe request frames"
 
 DEBUG = False
 
-def build_packet_callback(time_fmt, logger, delimiter, results):
+def build_packet_callback(time_fmt, logger, delimiter, results, p):
 	def packet_callback(packet):
 		uniqmac = True
 
@@ -39,9 +39,7 @@ def build_packet_callback(time_fmt, logger, delimiter, results):
 		fields = []
 
 		# determine preferred time format 
-		log_time = str(int(time.time()))
-		if time_fmt == 'iso':
-			log_time = datetime.now().isoformat()
+		log_time = datetime.now().strftime("%H:%M:%S")
 
 		fields.append(log_time)
 		tempresults[0] = log_time
@@ -55,7 +53,9 @@ def build_packet_callback(time_fmt, logger, delimiter, results):
 			parsed_mac = netaddr.EUI(packet.addr2)
 			if parsed_mac in results:
 				uniqmac = False
-			mac = parsed_mac.oui.registration().org
+			mac = p.get_manuf(str(parsed_mac))
+			if type(mac) == type(None):
+				return
 			fields.append('{:20}'.format(mac[:20]))
 			tempresults[2] = mac
 		except netaddr.core.NotRegisteredError, e:
@@ -73,7 +73,8 @@ def build_packet_callback(time_fmt, logger, delimiter, results):
 
 		# Did we find a unique device?
 		if uniqmac:
-			results[parsed_mac] = "TEST"
+			results[parsed_mac] = tempresults
+			#print tempresults
 			#for i in results:
 			#	print i
 		else:
@@ -84,13 +85,9 @@ def build_packet_callback(time_fmt, logger, delimiter, results):
 	return packet_callback
 
 def main():
-	results = numpy.empty([100, 5], dtype = 'S20')
-	currindex = [0]
-	
 	results2 = {}
-	# print len(results[:, 0])
-	# print len(results[0, :])
-	# print results
+
+	p = manuf.MacParser()
 
 	parser = argparse.ArgumentParser(description=DESCRIPTION)
 	parser.add_argument('-i', '--interface', help="capture interface")
@@ -117,7 +114,7 @@ def main():
 	if args.log:
 		logger.addHandler(logging.StreamHandler(sys.stdout))
 	built_packet_cb = build_packet_callback(args.time, logger, 
-		args.delimiter, results2)
+		args.delimiter, results2, p)
 	print "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID"
 	sniff(iface=args.interface, prn=built_packet_cb, store=0)
 
