@@ -8,6 +8,7 @@ import sys
 import logging
 import numpy
 import manuf
+import os
 from scapy.all import *
 from pprint import pprint
 from logging.handlers import RotatingFileHandler
@@ -21,8 +22,9 @@ DEBUG = False
 def build_packet_callback(time_fmt, logger, delimiter, results, p):
 	def packet_callback(packet):
 		uniqmac = True
+		#print len(results)
 
-		tempresults = ["", "", "", "", "", ""]
+		tempresults = ["", "", "", "", "", "", len(results), "1"]
 		
 		#if not results:
 		#	print "First run"
@@ -62,9 +64,18 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 			fields.append('{:20}'.format('UNKNOWN'))
 			tempresults[2] = 'UNKNOWN'
 
-		# include the SSID in the probe frame
-		fields.append('{:10}'.format(packet.info))
-		tempresults[3] = packet.info
+		# include the SSID in the probe frame if new device
+		if uniqmac:
+			fields.append('{:10}'.format(packet.info[:10]))
+			tempresults[3] = packet.info
+		else:
+			if results[parsed_mac][3] == "":
+				fields.append('{:10}'.format(packet.info[:10]))
+				tempresults[3] = packet.info
+			else:
+				if packet.info != "":
+					results[parsed_mac][3] = packet.info
+				fields.append(results[parsed_mac][3])
 			
 		rssi_val = -(256-ord(packet.notdecoded[-4:-3]))
 		fields.append(str(rssi_val))
@@ -74,20 +85,42 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 		# Did we find a unique device?
 		if uniqmac:
 			results[parsed_mac] = tempresults
+			fields.append(tempresults[7])
 			#print tempresults
 			#for i in results:
 			#	print i
 		else:
+			results[parsed_mac][7] = str(int(results[parsed_mac][7]) + 1)
+			fields.append(results[parsed_mac][7])
+
+			lines_modify = len(results)- results[parsed_mac][6]
+
+			if results[parsed_mac][3] == "":
+				results[parsed_mac][3] = tempresults[3]
+
+			backline(lines_modify)
+			logger.info(delimiter.join(fields))
+			forwardline(lines_modify -1)
 			return
 
 		logger.info(delimiter.join(fields))
 
 	return packet_callback
 
-def main():
-	results2 = {}
+def backline(times):
+	for x in range(0, times):
+		sys.stdout.write("\033[F")
+		# sys.stdout.write("\033[K")
 
-	p = manuf.MacParser()
+def forwardline(times):
+	if times < 0:
+		return
+	for x in range(0, times):
+		sys.stdout.write("\n")	
+
+def main():
+	clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
+	clear()
 
 	parser = argparse.ArgumentParser(description=DESCRIPTION)
 	parser.add_argument('-i', '--interface', help="capture interface")
@@ -114,8 +147,11 @@ def main():
 	if args.log:
 		logger.addHandler(logging.StreamHandler(sys.stdout))
 	built_packet_cb = build_packet_callback(args.time, logger, 
-		args.delimiter, results2, p)
-	print "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID"
+		args.delimiter, {}, manuf.MacParser())
+	print "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "Data" + '\n'
+	#print("FAILED...")
+	#backline(4)
+
 	sniff(iface=args.interface, prn=built_packet_cb, store=0)
 
 if __name__ == '__main__':
