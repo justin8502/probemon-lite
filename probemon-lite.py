@@ -14,7 +14,7 @@ from pprint import pprint
 from logging.handlers import RotatingFileHandler
 
 
-NAME = 'probemon'
+NAME = 'probemon-lite'
 DESCRIPTION = "a command line tool for logging 802.11 probe request frames"
 
 DEBUG = False
@@ -22,12 +22,8 @@ DEBUG = False
 def build_packet_callback(time_fmt, logger, delimiter, results, p):
 	def packet_callback(packet):
 		uniqmac = True
-		#print len(results)
 
 		tempresults = ["", "", "", "", "", len(results), "1"]
-		
-		#if not results:
-		#	print "First run"
 		
 		if not packet.haslayer(Dot11):
 			return
@@ -41,7 +37,9 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 		fields = []
 
 		# determine preferred time format 
-		log_time = datetime.now().strftime("%H:%M:%S")
+		log_time = str(int(time.time()))		
+		if time_fmt == 'iso':
+			log_time = datetime.now().strftime("%H:%M:%S")
 
 		fields.append(log_time)
 		tempresults[0] = log_time
@@ -58,24 +56,24 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 			mac = p.get_manuf(str(parsed_mac))
 			if type(mac) == type(None):
 				return
-			fields.append('{:20}'.format(mac[:20]))
+			fields.append(formatMAC(mac))
 			tempresults[2] = mac
 		except netaddr.core.NotRegisteredError, e:
-			fields.append('{:20}'.format('UNKNOWN'))
+			fields.append(formatMAC('UNKNOWN'))
 			tempresults[2] = 'UNKNOWN'
 
 		# include the SSID in the probe frame if new device
 		if uniqmac:
-			fields.append('{:12}'.format(packet.info[:12]))
-			tempresults[3] = packet.info
+			fields.append(formatSSID(packet.info))
+			tempresults[3] = formatSSID(packet.info)
 		else:
 			if results[parsed_mac][3] == "":
-				fields.append('{:12}'.format(packet.info[:12]))
-				tempresults[3] = packet.info
+				fields.append(formatSSID(packet.info))
+				tempresults[3] = formatSSID(packet.info)
 			else:
 				if packet.info != "":
-					results[parsed_mac][3] = packet.info
-				fields.append(results[parsed_mac][3][:12])
+					results[parsed_mac][3] = formatSSID(packet.info)
+				fields.append(results[parsed_mac][3][:14])
 			
 		rssi_val = -(256-ord(packet.notdecoded[-4:-3]))
 		fields.append(str(rssi_val))
@@ -87,12 +85,7 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 		else:
 			results[parsed_mac][6] = str(int(results[parsed_mac][6]) + 1)
 			fields.append(results[parsed_mac][6])
-
 			lines_modify = len(results)- results[parsed_mac][5]
-
-			#if results[parsed_mac][3] == "":
-			#	results[parsed_mac][3] = tempresults[3]
-
 			backline(lines_modify)
 			logger.info(delimiter.join(fields))
 			forwardline(lines_modify -1)
@@ -105,13 +98,18 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 def backline(times):
 	for x in range(0, times):
 		sys.stdout.write("\033[F")
-		# sys.stdout.write("\033[K")
 
 def forwardline(times):
 	if times < 0:
 		return
 	for x in range(0, times):
-		sys.stdout.write("\n")	
+		sys.stdout.write("\n")
+
+def formatSSID(SSID):
+	return '{:<14}'.format(SSID)[:14]
+
+def formatMAC(mac):
+	return '{:<20}'.format(mac)[:20]
 
 def main():
 
@@ -143,8 +141,6 @@ def main():
 	built_packet_cb = build_packet_callback(args.time, logger, 
 		args.delimiter, {}, manuf.MacParser())
 	print '\n' + "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "#Data" + '\n'
-	#print("FAILED...")
-	#backline(4)
 
 	sniff(iface=args.interface, prn=built_packet_cb, store=0)
 
