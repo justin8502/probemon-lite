@@ -141,7 +141,7 @@ def main():
 	logger.addHandler(logging.StreamHandler(sys.stdout))
 	built_packet_cb = build_packet_callback(args.time, logger, 
 		args.delimiter, {}, manuf.MacParser())
-	print '\n' + "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "Data" + '\n'
+	print '\n' + "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "#Data" + '\n'
 	#print("FAILED...")
 	#backline(4)
 
