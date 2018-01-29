@@ -114,8 +114,6 @@ def forwardline(times):
 		sys.stdout.write("\n")	
 
 def main():
-	clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
-	clear()
 
 	parser = argparse.ArgumentParser(description=DESCRIPTION)
 	parser.add_argument('-i', '--interface', help="capture interface")
@@ -132,6 +130,9 @@ def main():
 		sys.exit(-1)
 	
 	DEBUG = args.debug
+
+	clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
+	clear()
 
 	# setup our rotating logger
 	logger = logging.getLogger(NAME)
