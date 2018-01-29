@@ -24,7 +24,7 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 		uniqmac = True
 		#print len(results)
 
-		tempresults = ["", "", "", "", "", "", len(results), "1"]
+		tempresults = ["", "", "", "", "", len(results), "1"]
 		
 		#if not results:
 		#	print "First run"
@@ -66,37 +66,32 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 
 		# include the SSID in the probe frame if new device
 		if uniqmac:
-			fields.append('{:10}'.format(packet.info[:10]))
+			fields.append('{:12}'.format(packet.info[:12]))
 			tempresults[3] = packet.info
 		else:
 			if results[parsed_mac][3] == "":
-				fields.append('{:10}'.format(packet.info[:10]))
+				fields.append('{:12}'.format(packet.info[:12]))
 				tempresults[3] = packet.info
 			else:
 				if packet.info != "":
 					results[parsed_mac][3] = packet.info
-				fields.append(results[parsed_mac][3])
+				fields.append(results[parsed_mac][3][:12])
 			
 		rssi_val = -(256-ord(packet.notdecoded[-4:-3]))
 		fields.append(str(rssi_val))
 		tempresults[4] = str(rssi_val)
-		tempresults[5] = str(rssi_val)
-
 		# Did we find a unique device?
 		if uniqmac:
 			results[parsed_mac] = tempresults
-			fields.append(tempresults[7])
-			#print tempresults
-			#for i in results:
-			#	print i
+			fields.append(tempresults[6])
 		else:
-			results[parsed_mac][7] = str(int(results[parsed_mac][7]) + 1)
-			fields.append(results[parsed_mac][7])
+			results[parsed_mac][6] = str(int(results[parsed_mac][6]) + 1)
+			fields.append(results[parsed_mac][6])
 
-			lines_modify = len(results)- results[parsed_mac][6]
+			lines_modify = len(results)- results[parsed_mac][5]
 
-			if results[parsed_mac][3] == "":
-				results[parsed_mac][3] = tempresults[3]
+			#if results[parsed_mac][3] == "":
+			#	results[parsed_mac][3] = tempresults[3]
 
 			backline(lines_modify)
 			logger.info(delimiter.join(fields))
@@ -130,7 +125,6 @@ def main():
 	parser.add_argument('-c', '--max-backups', default=99999, help="maximum number of log files to keep")
 	parser.add_argument('-d', '--delimiter', default='\t', help="output field delimiter")
 	parser.add_argument('-D', '--debug', action='store_true', help="enable debug output")
-	parser.add_argument('-l', '--log', action='store_true', help="enable scrolling live view of the logfile")
 	args = parser.parse_args()
 
 	if not args.interface:
@@ -144,11 +138,10 @@ def main():
 	logger.setLevel(logging.INFO)
 	handler = RotatingFileHandler(args.output, maxBytes=args.max_bytes, backupCount=args.max_backups)
 	logger.addHandler(handler)
-	if args.log:
-		logger.addHandler(logging.StreamHandler(sys.stdout))
+	logger.addHandler(logging.StreamHandler(sys.stdout))
 	built_packet_cb = build_packet_callback(args.time, logger, 
 		args.delimiter, {}, manuf.MacParser())
-	print "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "Data" + '\n'
+	print '\n' + "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "Data" + '\n'
 	#print("FAILED...")
 	#backline(4)
 
