@@ -21,7 +21,15 @@ DEBUG = False
 
 def build_packet_callback(time_fmt, logger, delimiter, results, p):
 	def packet_callback(packet):
+		rows, columns = os.popen('stty size', 'r').read().split()
 		uniqmac = True
+
+
+		if (len(results) - (int(rows)-5)) > 1:
+			clear = lambda: os.system('cls' if os.name=='nt' else 'clear')
+			clear()	
+			print '\n' + "Time" + '\t\t' + "MAC Addr" + '\t\t' + "Vendor" + '\t\t\t' + "Network" +'\t\t' + "RSSID" + '\t' + "#Data" + '\n'
+			results.clear()
 
 		tempresults = ["", "", "", "", "", len(results), "1"]
 		
@@ -80,6 +88,9 @@ def build_packet_callback(time_fmt, logger, delimiter, results, p):
 		tempresults[4] = str(rssi_val)
 		# Did we find a unique device?
 		if uniqmac:
+			if len(results) > (int(rows)-5):
+				fields = []
+				return
 			results[parsed_mac] = tempresults
 			fields.append(tempresults[6])
 		else:
